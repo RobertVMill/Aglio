@@ -1,10 +1,13 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Pizza, ChevronRight, Sandwich, Soup } from 'lucide-react';
 import Link from 'next/link';
+import { supabase } from '@/lib/supabaseClient';
+import { Recipe } from '@/types';
+import Image from 'next/image';
 
 const getTimeBasedGreeting = () => {
   const hour = new Date().getHours();
@@ -15,8 +18,9 @@ const getTimeBasedGreeting = () => {
 
 export default function Dashboard() {
   const [selectedMood, setSelectedMood] = useState('');
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
   const mealTime = getTimeBasedGreeting();
-  
+
   const moodOptions = [
     { emoji: "🔥", text: "Something spicy", icon: Pizza, color: "bg-red-500" },
     { emoji: "🥗", text: "Light & healthy", icon: Sandwich, color: "bg-green-500" },
@@ -25,11 +29,28 @@ export default function Dashboard() {
     { emoji: "🎲", text: "Surprise me!", icon: Pizza, color: "bg-purple-500" }
   ];
 
-  // Add a handler for mood selection
   const handleMoodSelection = (mood: string) => {
     setSelectedMood(mood);
-    // You could add more functionality here, like showing recommended meals
   };
+
+  // Fetch recipes from Supabase
+  useEffect(() => {
+    async function loadRecipes() {
+      const { data, error } = await supabase
+        .from('recipes')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(3);
+
+      if (error) {
+        console.error("Error fetching recipes:", error);
+      } else {
+        setRecipes(data || []);
+      }
+    }
+
+    loadRecipes();
+  }, []);
 
   return (
     <div className="min-h-screen bg-background p-6">
@@ -113,14 +134,29 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {[1, 2, 3].map((i) => (
-                <Card key={i} className="border border-primary">
-                  <CardContent className="p-4">
-                    <div className="aspect-square bg-muted rounded-lg mb-2" />
-                    <p className="font-medium">Saved Meal {i}</p>
-                  </CardContent>
-                </Card>
-              ))}
+              {recipes.length > 0 ? (
+                recipes.map((recipe) => (
+                  <Card key={recipe.id} className="border border-primary">
+                    <CardContent className="p-4">
+                      <div className="aspect-square bg-muted rounded-lg mb-2">
+                        {recipe.image_url && (
+                          <Image
+                            src={recipe.image_url}
+                            alt={recipe.name}
+                            layout="fill"
+                            objectFit="cover"
+                            className="rounded-lg"
+                          />
+                        )}
+                      </div>
+                      <p className="font-medium">{recipe.name}</p>
+                      <p className="text-sm text-muted-foreground">{recipe.description}</p>
+                    </CardContent>
+                  </Card>
+                ))
+              ) : (
+                <p>No saved recipes available.</p>
+              )}
             </div>
           </CardContent>
         </Card>

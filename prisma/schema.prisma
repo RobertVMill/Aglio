@@ -1,0 +1,120 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  clerkId   String   @unique // For Clerk authentication
+  name      String?
+  email     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  recipes        Recipe[]        // Recipes created by the user
+  mealPlans      MealPlan[]     // Meal plans created by the user
+  favoriteRecipes Recipe[]       @relation("UserFavorites")
+  households     Household[]     // Households the user belongs to
+}
+
+model Recipe {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  instructions String?
+  prepTime    Int?     // in minutes
+  cookTime    Int?     // in minutes
+  servings    Int?
+  imageUrl    String?
+  isSpecial   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  author         User           @relation(fields: [authorId], references: [id])
+  authorId       String
+  favoritedBy    User[]         @relation("UserFavorites")
+  categories     Category[]
+  ingredients    Ingredient[]
+  mealPlanItems  MealPlanItem[]
+  
+  // Metadata
+  mood          String?  // e.g., "comfort", "healthy", "quick"
+  cuisine       String?  // e.g., "Italian", "Japanese"
+  occasion      String?  // e.g., "birthday", "holiday"
+  difficulty    String?  // e.g., "easy", "medium", "hard"
+  
+  @@index([authorId])
+  @@index([mood])
+  @@index([cuisine])
+}
+
+model Ingredient {
+  id       String   @id @default(cuid())
+  name     String
+  amount   Float
+  unit     String   // e.g., "grams", "cups"
+  recipe   Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  recipeId String
+
+  @@index([recipeId])
+}
+
+model Category {
+  id      String   @id @default(cuid())
+  name    String   @unique
+  recipes Recipe[]
+}
+
+model MealPlan {
+  id        String   @id @default(cuid())
+  name      String
+  startDate DateTime
+  endDate   DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user      User          @relation(fields: [userId], references: [id])
+  userId    String
+  items     MealPlanItem[]
+  household Household?    @relation(fields: [householdId], references: [id])
+  householdId String?
+
+  @@index([userId])
+  @@index([householdId])
+}
+
+model MealPlanItem {
+  id         String   @id @default(cuid())
+  date       DateTime
+  mealType   String   // e.g., "breakfast", "lunch", "dinner"
+  
+  // Relations
+  mealPlan   MealPlan @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+  mealPlanId String
+  recipe     Recipe   @relation(fields: [recipeId], references: [id])
+  recipeId   String
+
+  @@index([mealPlanId])
+  @@index([recipeId])
+}
+
+model Household {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  members   User[]      // Members of the household
+  mealPlans MealPlan[] // Meal plans for the household
+}
