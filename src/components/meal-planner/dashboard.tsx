@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Pizza, ChevronRight, Sandwich, Soup } from 'lucide-react';
+import Link from 'next/link';
 
 const getTimeBasedGreeting = () => {
   const hour = new Date().getHours();
@@ -23,6 +24,12 @@ export default function Dashboard() {
     { emoji: "⚡", text: "Quick & easy", icon: Pizza, color: "bg-blue-500" },
     { emoji: "🎲", text: "Surprise me!", icon: Pizza, color: "bg-purple-500" }
   ];
+
+  // Add a handler for mood selection
+  const handleMoodSelection = (mood: string) => {
+    setSelectedMood(mood);
+    // You could add more functionality here, like showing recommended meals
+  };
 
   return (
     <div className="min-h-screen bg-background p-6">
@@ -58,16 +65,24 @@ export default function Dashboard() {
                 <Button
                   key={mood.text}
                   variant="outline"
-                  onClick={() => setSelectedMood(mood.text)}
+                  onClick={() => handleMoodSelection(mood.text)}
                   className={`${mood.color} text-white hover:opacity-90 
                     transform hover:scale-105 transition-all h-16
-                    border-2 border-black shadow-pop`}
+                    border-2 border-black shadow-pop
+                    ${selectedMood === mood.text ? 'ring-4 ring-white' : ''}`}
                 >
                   <span className="text-2xl mr-2">{mood.emoji}</span>
                   {mood.text}
                 </Button>
               ))}
             </div>
+
+            {/* Show selected mood feedback */}
+            {selectedMood && (
+              <p className="text-lg text-primary animate-fade-in">
+                Great choice! Let's find you something {selectedMood.toLowerCase()}...
+              </p>
+            )}
 
             {/* Quick Actions */}
             <div className="grid grid-cols-2 gap-4 mt-6">
@@ -78,13 +93,15 @@ export default function Dashboard() {
                 View Saved Meals
                 <ChevronRight className="ml-2" />
               </Button>
-              <Button 
-                variant="outline"
-                className="border-2 border-primary shadow-pop h-16"
-              >
-                Spin the Meal Wheel
-                <ChevronRight className="ml-2" />
-              </Button>
+              <Link href="/wheel" className="w-full">
+                <Button 
+                  variant="outline"
+                  className="border-2 border-primary shadow-pop h-16 w-full"
+                >
+                  Spin the Meal Wheel
+                  <ChevronRight className="ml-2" />
+                </Button>
+              </Link>
             </div>
           </CardContent>
         </Card>
