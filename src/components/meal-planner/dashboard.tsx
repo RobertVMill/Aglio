@@ -80,7 +80,7 @@ export default function Dashboard() {
             {/* Show selected mood feedback */}
             {selectedMood && (
               <p className="text-lg text-primary animate-fade-in">
-                Great choice! Let's find you something {selectedMood.toLowerCase()}...
+                Great choice! Lets find you something {selectedMood.toLowerCase()}...
               </p>
             )}
 
