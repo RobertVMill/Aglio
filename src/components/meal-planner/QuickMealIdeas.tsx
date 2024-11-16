@@ -1,71 +1,146 @@
 // src/components/meal-planner/QuickMealIdeas.tsx
 
-"use client";
-
 import React, { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import Image from 'next/image';
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import MealCard from './MealCard';
+import type { UserMood } from '@/types';
+
+interface QuickMealIdeasProps {
+  userMood?: UserMood;
+  season?: string;
+}
 
 interface Meal {
   idMeal: string;
   strMeal: string;
   strMealThumb: string;
-  strCategory: string;
-  strArea: string;
-  strInstructions: string;
+  strCategory?: string;
+  strArea?: string;
+  strInstructions?: string;
 }
 
-export default function QuickMealIdeas() {
+export default function QuickMealIdeas({ userMood, season }: QuickMealIdeasProps) {
   const [mealIdeas, setMealIdeas] = useState<Meal[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetchMealIdeas() {
+    const fetchMeals = async () => {
       try {
-        const response = await fetch("/api/meal-ideas");
+        setIsLoading(true);
+        setError(null);
+        
+        // Build query params
+        const params = new URLSearchParams();
+        if (userMood) params.append('mood', userMood);
+        if (season) params.append('season', season);
+        
+        const response = await fetch(`/api/meal-ideas?${params}`);
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch meals');
+        }
+        
         const data = await response.json();
-        setMealIdeas(data.meals);
-      } catch (error) {
-        console.error("Error fetching meal ideas:", error);
+        const meals = data.meals || [];
+        
+        setMealIdeas(meals.map((meal: Meal) => ({
+          idMeal: meal.idMeal || `temp-${Date.now()}`, // Fallback ID if none exists
+          strMeal: meal.strMeal,
+          strMealThumb: meal.strMealThumb,
+          strCategory: meal.strCategory || 'Uncategorized',
+          strArea: meal.strArea || 'Unknown Origin',
+          strInstructions: meal.strInstructions || 'No instructions available'
+        })));
+      } catch (err) {
+        console.error('Error fetching meals:', err);
+        setError('Failed to load meal suggestions');
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
+    };
+
+    fetchMeals();
+  }, [userMood, season]);
+
+  // Generate title based on mood and season
+  const getTitle = () => {
+    if (userMood && season) {
+      return `Perfect ${season} Recipes for Your ${userMood} Mood`;
+    } else if (userMood) {
+      return `Recipes to Match Your ${userMood} Mood`;
+    } else if (season) {
+      return `Perfect ${season} Recipes to Try Today`;
     }
+    return 'Recommended Recipes';
+  };
 
-    fetchMealIdeas();
-  }, []);
+  // Loading state
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Loading meal suggestions...</CardTitle>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1, 2, 3].map((index) => (
+              <div 
+                key={`skeleton-${index}`} 
+                className="h-64 bg-gray-200 rounded-lg animate-pulse"
+              />
+            ))}
+          </div>
+        </CardHeader>
+      </Card>
+    );
+  }
 
-  if (loading) {
-    return <p>Loading meal ideas...</p>;
+  // Error state
+  if (error) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-red-500">Error: {error}</CardTitle>
+        </CardHeader>
+      </Card>
+    );
+  }
+
+  // Empty state
+  if (!mealIdeas.length) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>No meals found</CardTitle>
+          <p>Try adjusting your preferences for more suggestions.</p>
+        </CardHeader>
+      </Card>
+    );
   }
 
   return (
-    <Card className="border-2 border-primary shadow-pop">
+    <Card>
       <CardHeader>
-        <CardTitle>Quick Meal Ideas for Tonight</CardTitle>
+        <CardTitle>{getTitle()}</CardTitle>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {mealIdeas.map((meal) => (
+            <MealCard
+              key={meal.idMeal}
+              meal={{
+                idMeal: meal.idMeal,
+                strMeal: meal.strMeal,
+                strMealThumb: meal.strMealThumb,
+                strCategory: meal.strCategory || 'Uncategorized',
+                strArea: meal.strArea || 'Unknown Origin',
+                strInstructions: meal.strInstructions || 'No instructions available'
+              }}
+              onLike={() => {/* TODO: Implement like functionality */}}
+              onShare={() => {/* TODO: Implement share functionality */}}
+              isExpanded={false}
+              onToggleExpand={() => {/* TODO: Implement expand functionality */}}
+            />
+          ))}
+        </div>
       </CardHeader>
-      <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {mealIdeas.length > 0 ? (
-          mealIdeas.map((meal) => (
-            <div key={meal.idMeal} className="border border-primary rounded-lg p-4">
-              <div className="relative h-48 w-full mb-4">
-                <Image
-                  src={meal.strMealThumb}
-                  alt={meal.strMeal}
-                  layout="fill"
-                  objectFit="cover"
-                  className="rounded-lg"
-                />
-              </div>
-              <p className="font-bold text-lg">{meal.strMeal}</p>
-              <p className="text-sm text-muted-foreground">{meal.strCategory} | {meal.strArea}</p>
-              <p className="mt-2 text-sm line-clamp-3">{meal.strInstructions}</p>
-            </div>
-          ))
-        ) : (
-          <p>No meal ideas available at the moment. Please try again later!</p>
-        )}
-      </CardContent>
     </Card>
   );
 }
