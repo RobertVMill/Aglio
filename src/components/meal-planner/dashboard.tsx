@@ -1,37 +1,70 @@
-// src/components/meal-planner/Dashboard.tsx
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import QuickMealIdeas from './QuickMealIdeas';
-import { Card, CardHeader, CardTitle } from "@/components/ui/card"; // Removed unused CardContent
 
-function getGreetingMessage() {
-  const day = new Date().toLocaleString('en-US', { weekday: 'long' });
-  const hour = new Date().getHours();
-  let mealTime = '';
-
-  if (hour < 12) mealTime = 'breakfast';
-  else if (hour < 17) mealTime = 'lunch';
-  else mealTime = 'dinner';
-
-  return `Happy ${day}! Ready for a delicious ${mealTime}?`;
-}
+// Define a type for the location data
+type LocationData = {
+  city?: string;
+  country_name?: string;
+  latitude?: number;
+  longitude?: number;
+};
 
 export default function Dashboard() {
-  const [greetingMessage, setGreetingMessage] = useState('');
+  const [introMessage, setIntroMessage] = useState("");
+
+  // Function to determine the day of the week and time-based message
+  const generateGreetingMessage = (locationData: LocationData, season: string) => {
+    const dayOfWeek = new Date().toLocaleDateString("en-US", { weekday: 'long' });
+    const timeOfDay = new Date().getHours() < 12 ? "morning" : new Date().getHours() < 17 ? "afternoon" : "evening";
+    const locationName = locationData?.city || locationData?.country_name || "your area";
+
+    return `Happy ${dayOfWeek}! It's ${timeOfDay} in ${locationName}. This ${season} season is perfect for a cozy meal!`;
+  };
 
   useEffect(() => {
-    setGreetingMessage(getGreetingMessage());
+    const fetchIntroData = async () => {
+      try {
+        // Fetch the location data from the API route
+        const locationResponse = await fetch('/api/locationData');
+        const locationData: LocationData = await locationResponse.json();
+
+        // Determine the season based on the location data
+        const month = new Date().getMonth() + 1;
+        const hemisphere = locationData.latitude && locationData.latitude > 0 ? 'northern' : 'southern';
+
+        let season = "winter";
+        if (hemisphere === 'northern') {
+          if (month >= 3 && month <= 5) season = "spring";
+          else if (month >= 6 && month <= 8) season = "summer";
+          else if (month >= 9 && month <= 11) season = "fall";
+        } else {
+          if (month >= 3 && month <= 5) season = "fall";
+          else if (month >= 6 && month <= 8) season = "winter";
+          else if (month >= 9 && month <= 11) season = "spring";
+        }
+
+        const message = generateGreetingMessage(locationData, season);
+        setIntroMessage(message);
+      } catch (error) {
+        console.error("Error fetching intro message data:", error);
+        setIntroMessage("Welcome back, foodie! Ready to explore delicious meal ideas?");
+      }
+    };
+
+    fetchIntroData();
   }, []);
 
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-4xl mx-auto space-y-8">
-        {/* Greeting Section */}
-        <Card className="border-2 border-primary shadow-pop mb-4">
+        {/* Dynamic Intro Message */}
+        <Card className="border-2 border-primary shadow-pop">
           <CardHeader>
             <CardTitle className="text-3xl font-bold text-primary">
-              {greetingMessage}
+              {introMessage}
             </CardTitle>
           </CardHeader>
         </Card>
